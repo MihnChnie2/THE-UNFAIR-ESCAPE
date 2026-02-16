@@ -665,6 +665,8 @@ function kill(){
 function levelDone(){
   const el=((Date.now()-G.lvStart)/1000).toFixed(1);
   G.totalT+=+el;
+  // Lưu level cao nhất ngay lập tức
+  saveHighestLevel(G.name,G.lv,G.totalT.toFixed(1),G.deaths);
   if(G.lv>=TOTAL){
     saveToLeaderboard(G.name,G.totalT.toFixed(1),G.deaths,TOTAL);
     $('win-tm').textContent=`${G.totalT.toFixed(1)}s`;
@@ -844,7 +846,7 @@ $('b-retry').addEventListener('click',()=>{parseMap(G.lv-1);show('s-game');});
 $('b-next').addEventListener('click',()=>{G.lv++;if(G.lv<=TOTAL){parseMap(G.lv-1);show('s-game');}});
 $('b-r2').addEventListener('click',()=>{G.lv=1;G.lives=2;G.deaths=0;G.totalT=0;parseMap(0);show('s-game');});
 $('b-extra').addEventListener('click',()=>{
-  const adUrl='https://anthropic.com';
+  const adUrl='https://ouo.io/4BVEpyi';
   window.open(adUrl,'_blank');
   window.addEventListener('focus',function onFocus(){
     window.removeEventListener('focus',onFocus);
@@ -865,6 +867,41 @@ $('b-again').addEventListener('click',()=>{G.lv=1;G.lives=LIVES;G.deaths=0;G.tot
 const firebaseConfig = {
   databaseURL: "https://the-unfair-escape-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
+
+// Lưu level cao nhất khi người chơi đạt được
+async function saveHighestLevel(playerName,currentLevel,totalTime,deaths){
+  try{
+    const url=`${firebaseConfig.databaseURL}/players/${playerName}.json`;
+    const response=await fetch(url);
+    const existingData=await response.json();
+    
+    // Nếu player đã tồn tại và level mới > level cũ
+    if(existingData && existingData.level >= currentLevel){
+      console.log(`Level ${currentLevel} <= Level cũ ${existingData.level}, không cập nhật`);
+      return;
+    }
+    
+    const playerData={
+      name:playerName,
+      level:currentLevel,
+      time:parseFloat(totalTime),
+      deaths:deaths,
+      timestamp:new Date().toLocaleString('vi-VN')
+    };
+    
+    const updateUrl=`${firebaseConfig.databaseURL}/players/${playerName}.json`;
+    const updateResponse=await fetch(updateUrl,{
+      method:'PUT',
+      body:JSON.stringify(playerData)
+    });
+    
+    if(updateResponse.ok){
+      console.log(`✅ Saved Level ${currentLevel} for ${playerName}`);
+    }
+  }catch(e){
+    console.warn('Save level failed:',e.message);
+  }
+}
 
 async function saveToLeaderboard(playerName,totalTime,deaths,levelReached){
   try{
