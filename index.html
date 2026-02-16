@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>THE UNFAIR ESCAPE - HARDCORE</title>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Bebas+Neue&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -862,40 +860,15 @@ $('b-menu-dead').addEventListener('click',()=>{show('s-menu');});
 $('b-again').addEventListener('click',()=>{G.lv=1;G.lives=LIVES;G.deaths=0;G.totalT=0;parseMap(0);show('s-game');});
 
 // ================================================================
-//  FIREBASE CONFIG (THAY ĐỔI CÁC GIÁ TRỊ NÀY)
+//  FIREBASE REALTIME DATABASE REST API
 // ================================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCQqBLCQMmZ9reKKcgz3k0EAXT7O6NSuCc",
-  authDomain: "the-unfair-escape.firebaseapp.com",
-  databaseURL: "https://the-unfair-escape-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "the-unfair-escape",
-  storageBucket: "the-unfair-escape.firebasestorage.app",
-  messagingSenderId: "888329744289",
-  appId: "1:888329744289:web:c809152aac0ea63db265e0"
+  databaseURL: "https://the-unfair-escape-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
-// Khởi tạo Firebase khi trang load
-let db = null;
-
-async function initFirebase(){
-  if(!db && typeof firebase !== 'undefined'){
-    try{
-      firebase.initializeApp(firebaseConfig);
-      db=firebase.database();
-      console.log('✅ Firebase initialized');
-    }catch(e){
-      console.warn('⚠️ Firebase already initialized or config missing');
-    }
-  }
-}
-
 async function saveToLeaderboard(playerName,totalTime,deaths,levelReached){
-  if(!db){
-    console.warn('Firebase not initialized');
-    return;
-  }
   try{
-    const playerId=Date.now()+Math.random();
+    const playerId=Date.now()+Math.random().toString(36).substr(2,9);
     const playerData={
       name:playerName,
       time:parseFloat(totalTime),
@@ -903,33 +876,48 @@ async function saveToLeaderboard(playerName,totalTime,deaths,levelReached){
       level:levelReached,
       timestamp:new Date().toLocaleString('vi-VN')
     };
-    await db.ref('players/'+playerId).set(playerData);
-    console.log('✅ Saved to leaderboard');
+    const url=`${firebaseConfig.databaseURL}/players/${playerId}.json`;
+    const response=await fetch(url,{
+      method:'PUT',
+      body:JSON.stringify(playerData)
+    });
+    if(response.ok){
+      console.log('✅ Saved to leaderboard');
+    }
   }catch(e){
     console.warn('Save failed:',e.message);
   }
 }
 
 async function loadLeaderboard(){
-  if(!db){
-    const tbody=$('lbt-body');
-    tbody.innerHTML='<tr><td colspan="5" style="color:#aaa">Firebase chưa được cấu hình</td></tr>';
-    return;
-  }
   try{
-    const snapshot=await db.ref('players').orderByChild('time').limitToFirst(20).once('value');
+    const tbody=$('lbt-body');
+    tbody.innerHTML='<tr><td colspan="5" style="color:#aaa">Đang tải...</td></tr>';
+    
+    const url=`${firebaseConfig.databaseURL}/players.json`;
+    const response=await fetch(url);
+    const data=await response.json();
+    
+    if(!data){
+      tbody.innerHTML='<tr><td colspan="5" style="color:#aaa">Chưa có ai chơi</td></tr>';
+      return;
+    }
+    
     const players=[];
-    snapshot.forEach(child=>{
-      players.push(child.val());
-    });
+    for(let id in data){
+      if(data[id]){
+        players.push(data[id]);
+      }
+    }
+    
     players.sort((a,b)=>a.time-b.time);
     
-    const tbody=$('lbt-body');
     tbody.innerHTML='';
     if(players.length===0){
       tbody.innerHTML='<tr><td colspan="5" style="color:#aaa">Chưa có ai chơi</td></tr>';
       return;
     }
+    
     players.slice(0,20).forEach((p,i)=>{
       const row=document.createElement('tr');
       row.innerHTML=`<td>${i+1}</td><td>${p.name}</td><td>${p.time.toFixed(1)}s</td><td>${p.deaths}</td><td>${p.level}</td>`;
@@ -944,16 +932,12 @@ async function loadLeaderboard(){
 
 $('b-lb').addEventListener('click',async()=>{
   show('s-lb');
-  await initFirebase();
   await loadLeaderboard();
 });
 
 $('b-lb-back').addEventListener('click',()=>{
   show('s-menu');
 });
-
-// Khởi tạo Firebase khi trang load
-window.addEventListener('load',initFirebase);
 </script>
 </body>
 </html>
