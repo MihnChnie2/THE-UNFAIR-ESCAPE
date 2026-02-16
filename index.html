@@ -873,48 +873,87 @@ const firebaseConfig = {
   messagingSenderId: "888329744289",
   appId: "1:888329744289:web:ae6ee1b766216066b265e0"
 };
-  
-// Khởi tạo Firebase
-firebase.initializeApp(firebaseConfig);
-const db=firebase.database();
+
+// Khởi tạo Firebase khi trang load
+let db = null;
+
+async function initFirebase(){
+  if(!db && typeof firebase !== 'undefined'){
+    try{
+      firebase.initializeApp(firebaseConfig);
+      db=firebase.database();
+      console.log('✅ Firebase initialized');
+    }catch(e){
+      console.warn('⚠️ Firebase already initialized or config missing');
+    }
+  }
+}
 
 async function saveToLeaderboard(playerName,totalTime,deaths,levelReached){
-  const playerId=Date.now()+Math.random();
-  const playerData={
-    name:playerName,
-    time:parseFloat(totalTime),
-    deaths:deaths,
-    level:levelReached,
-    timestamp:new Date().toLocaleString('vi-VN')
-  };
-  await db.ref('players/'+playerId).set(playerData);
+  if(!db){
+    console.warn('Firebase not initialized');
+    return;
+  }
+  try{
+    const playerId=Date.now()+Math.random();
+    const playerData={
+      name:playerName,
+      time:parseFloat(totalTime),
+      deaths:deaths,
+      level:levelReached,
+      timestamp:new Date().toLocaleString('vi-VN')
+    };
+    await db.ref('players/'+playerId).set(playerData);
+    console.log('✅ Saved to leaderboard');
+  }catch(e){
+    console.warn('Save failed:',e.message);
+  }
 }
 
 async function loadLeaderboard(){
-  const snapshot=await db.ref('players').orderByChild('time').limitToFirst(20).once('value');
-  const players=[];
-  snapshot.forEach(child=>{
-    players.push(child.val());
-  });
-  players.sort((a,b)=>a.time-b.time);
-  
-  const tbody=$('lbt-body');
-  tbody.innerHTML='';
-  players.slice(0,20).forEach((p,i)=>{
-    const row=document.createElement('tr');
-    row.innerHTML=`<td>${i+1}</td><td>${p.name}</td><td>${p.time.toFixed(1)}s</td><td>${p.deaths}</td><td>${p.level}</td>`;
-    tbody.appendChild(row);
-  });
+  if(!db){
+    const tbody=$('lbt-body');
+    tbody.innerHTML='<tr><td colspan="5" style="color:#aaa">Firebase chưa được cấu hình</td></tr>';
+    return;
+  }
+  try{
+    const snapshot=await db.ref('players').orderByChild('time').limitToFirst(20).once('value');
+    const players=[];
+    snapshot.forEach(child=>{
+      players.push(child.val());
+    });
+    players.sort((a,b)=>a.time-b.time);
+    
+    const tbody=$('lbt-body');
+    tbody.innerHTML='';
+    if(players.length===0){
+      tbody.innerHTML='<tr><td colspan="5" style="color:#aaa">Chưa có ai chơi</td></tr>';
+      return;
+    }
+    players.slice(0,20).forEach((p,i)=>{
+      const row=document.createElement('tr');
+      row.innerHTML=`<td>${i+1}</td><td>${p.name}</td><td>${p.time.toFixed(1)}s</td><td>${p.deaths}</td><td>${p.level}</td>`;
+      tbody.appendChild(row);
+    });
+  }catch(e){
+    console.warn('Load failed:',e.message);
+    const tbody=$('lbt-body');
+    tbody.innerHTML='<tr><td colspan="5" style="color:#aaa">Lỗi tải dữ liệu</td></tr>';
+  }
 }
 
 $('b-lb').addEventListener('click',async()=>{
   show('s-lb');
+  await initFirebase();
   await loadLeaderboard();
 });
 
 $('b-lb-back').addEventListener('click',()=>{
   show('s-menu');
 });
+
+// Khởi tạo Firebase khi trang load
+window.addEventListener('load',initFirebase);
 </script>
 </body>
 </html>
