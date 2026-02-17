@@ -704,7 +704,13 @@ function kill(){
       $('go-dt').textContent=G.deaths;
       $('go-lv').textContent=G.lv;
       show('s-go');
-      // CRAZYGAMES: Report game over
+      
+      // CRAZYGAMES: Báo gameplay stop
+      if(window.CrazyGames && window.CrazyGames.SDK) {
+        window.CrazyGames.SDK.gameplayStop();
+        console.log('📢 CrazyGames: gameplayStop called');
+      }
+      
       sendGameEvent('gameOver', {level: G.lv, deaths: G.deaths});
       requestAd();
     }
@@ -726,7 +732,13 @@ function levelDone(){
     $('win-tm').textContent=`${G.totalT.toFixed(1)}s`;
     $('win-dt').textContent=G.deaths;
     show('s-win');
-    // CRAZYGAMES: Report level complete (final level = game complete)
+    
+    // CRAZYGAMES: Báo gameplay stop (game hoàn thành)
+    if(window.CrazyGames && window.CrazyGames.SDK) {
+      window.CrazyGames.SDK.gameplayStop();
+      console.log('📢 CrazyGames: gameplayStop called (game completed)');
+    }
+    
     sendGameEvent('levelComplete', {level: G.lv});
   } else {
     $('lc-ti').textContent=`✅ QUA LEVEL ${G.lv}!`;
@@ -864,7 +876,25 @@ $('nm').addEventListener('input',function(){$('b-start').disabled=!this.value.tr
 $('b-start').addEventListener('click',()=>{
   const n=$('nm').value.trim();if(!n)return;G.name=n;show('s-tut');
 });
-$('b-go').addEventListener('click',()=>{G.lv=1;G.lives=LIVES;G.deaths=0;G.totalT=0;parseMap(0);show('s-game');if(!loopOn){loopOn=true;requestAnimationFrame(ts=>{lastT=ts;loop(ts);});}});
+$('b-go').addEventListener('click',()=>{
+  G.lv=1;
+  G.lives=LIVES;
+  G.deaths=0;
+  G.totalT=0;
+  parseMap(0);
+  show('s-game');
+  
+  // CRAZYGAMES: Báo gameplay start
+  if(window.CrazyGames && window.CrazyGames.SDK) {
+    window.CrazyGames.SDK.gameplayStart();
+    console.log('📢 CrazyGames: gameplayStart called');
+  }
+  
+  if(!loopOn){
+    loopOn=true;
+    requestAnimationFrame(ts=>{lastT=ts;loop(ts);});
+  }
+});
 $('b-retry').addEventListener('click',()=>{parseMap(G.lv-1);show('s-game');});
 $('b-next').addEventListener('click',()=>{G.lv++;if(G.lv<=TOTAL){parseMap(G.lv-1);show('s-game');}});
 $('b-r2').addEventListener('click',()=>{G.lv=1;G.lives=2;G.deaths=0;G.totalT=0;parseMap(0);show('s-game');});
