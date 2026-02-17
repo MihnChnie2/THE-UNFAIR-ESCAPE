@@ -7,11 +7,15 @@
 <!-- CrazyGames SDK -->
 <script src="https://sdk.crazygames.com/crazygames-sdk.js"></script>
 <script>
-// CrazyGames initialization
-window.CrazyGames.SDK.addEventListener('sdk_ready', () => {
-  console.log('✅ CrazyGames SDK Ready');
-  window.CrazyGames.SDK.setNumberOfPlayers(1);
-});
+// CrazyGames initialization - chờ SDK load xong
+if(window.CrazyGames && window.CrazyGames.SDK) {
+  window.CrazyGames.SDK.addEventListener('sdk_ready', () => {
+    console.log('✅ CrazyGames SDK Ready');
+    window.CrazyGames.SDK.setNumberOfPlayers(1);
+  });
+} else {
+  console.log('⚠️ CrazyGames SDK not available');
+}
 
 // Ad function
 function requestAd() {
