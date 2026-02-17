@@ -1,0 +1,63 @@
+<!-- 
+  THE UNFAIR ESCAPE - CrazyGames Version
+  Thêm đoạn code này vào đầu file unfair_escape.html (sau <body>)
+-->
+
+<script>
+// ================================================================
+//  CRAZYGAMES SDK INTEGRATION
+// ================================================================
+
+// Gửi sự kiện đến CrazyGames parent
+function sendGameEvent(eventType, data = {}) {
+  if(window.parent !== window) {
+    window.parent.postMessage({
+      type: 'gameEvent',
+      event: eventType,
+      data: data
+    }, '*');
+  }
+}
+
+// Override các hàm quan trọng để báo cáo sự kiện
+
+// Báo khi game bắt đầu
+const originalGameStart = function() {
+  console.log('📢 Sending gameStart event');
+  sendGameEvent('gameStart');
+};
+
+// Báo khi hoàn thành level
+const originalLevelDone = levelDone;
+levelDone = function() {
+  sendGameEvent('levelComplete', {level: G.lv, time: G.totalT});
+  originalLevelDone.call(this);
+};
+
+// Báo khi game over
+const originalGameOver = function() {
+  console.log('📢 Sending gameOver event');
+  sendGameEvent('gameOver', {deaths: G.deaths, level: G.lv});
+};
+
+// Gắn event khi show Game Over screen
+const originalShow = show;
+show = function(screenId) {
+  originalShow(screenId);
+  if(screenId === 's-go') {
+    originalGameOver();
+  }
+};
+
+// Báo khi bắt đầu chơi (sau khi vào game)
+const originalParseMap = parseMap;
+parseMap = function(lvIdx) {
+  originalParseMap(lvIdx);
+  if(lvIdx === 0) {
+    // Lần đầu vào game
+    sendGameEvent('gameStart');
+  }
+};
+
+console.log('✅ CrazyGames Integration Ready');
+</script>
